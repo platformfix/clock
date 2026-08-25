@@ -58,6 +58,24 @@ jobs:
         if: failure()
         run: docker logs clock-e2e || true
 
+      - name: Verify graceful shutdown on SIGTERM
+        run: |
+          waitfile=$(mktemp)
+          # Subscribe to the container's exit status before requesting the
+          # stop, so we capture the exit code that `main.go` returns with
+          # after handling SIGTERM, before `--rm` removes the container.
+          docker wait clock-e2e > "$waitfile" &
+          wait_pid=$!
+          docker stop clock-e2e
+          wait "$wait_pid"
+          code=$(cat "$waitfile")
+          rm -f "$waitfile"
+          echo "container exit code: $code"
+          if [ "$code" != "0" ]; then
+            echo "expected exit code 0 (clean shutdown after SIGTERM), got $code"
+            exit 1
+          fi
+
       - name: Clean up
         if: always()
         run: docker stop clock-e2e 2>/dev/null || true

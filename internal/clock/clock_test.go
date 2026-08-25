@@ -33,13 +33,10 @@ func TestRunPrintsTimestampsUntilCancelled(t *testing.T) {
 		t.Fatalf("expected at least 3 timestamp lines in 55ms at a 10ms interval, got %d: %v", len(lines), lines)
 	}
 
-	seen := map[string]bool{}
 	for _, line := range lines {
-		parsed, err := time.Parse(time.RFC3339, line)
-		if err != nil {
+		if _, err := time.Parse(time.RFC3339, line); err != nil {
 			t.Fatalf("line %q is not valid RFC3339: %v", line, err)
 		}
-		seen[parsed.Format(time.RFC3339)] = true
 	}
 }
 
