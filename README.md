@@ -25,9 +25,10 @@ go run ./cmd/clock
 
 ## How it works
 
-`internal/clock.Run` writes an RFC3339 timestamp to stdout immediately, then
-once a second, until it receives SIGINT or SIGTERM. That's the whole thing:
-no flags, no configuration.
+`internal/clock.Run` writes an RFC3339 timestamp (UTC) to the given writer
+immediately, then once a second, until the given context is cancelled.
+`cmd/clock/main.go` supplies stdout as that writer and cancels the context on
+SIGINT or SIGTERM. That's the whole thing: no flags, no configuration.
 
 ## Local development
 
