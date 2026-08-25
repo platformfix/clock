@@ -15,7 +15,19 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	slog.Info("starting clock")
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				if t, ok := a.Value.Any().(time.Time); ok {
+					a.Value = slog.TimeValue(t.UTC())
+				}
+			}
+			return a
+		},
+	})
+	logger := slog.New(handler)
+
+	logger.Info("starting clock")
 	clock.Run(ctx, os.Stdout, time.Second)
-	slog.Info("shutting down")
+	logger.Info("shutting down")
 }
