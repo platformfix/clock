@@ -1,0 +1,63 @@
+name: e2e
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: build --single-target --snapshot --clean -o clock
+
+      - name: Build the image
+        run: docker build -t clock:ci .
+
+      - name: Run the container and capture output
+        run: |
+          docker run -d --rm --name clock-e2e clock:ci
+          sleep 3
+          docker logs clock-e2e > /tmp/clock-output.txt
+          cat /tmp/clock-output.txt
+
+      - name: Verify multiple distinct RFC3339 timestamps were printed
+        run: |
+          lines=$(grep -cE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' /tmp/clock-output.txt || true)
+          if [ "$lines" -lt 2 ]; then
+            echo "expected at least 2 RFC3339 timestamp lines, got $lines"
+            exit 1
+          fi
+          distinct=$(sort -u /tmp/clock-output.txt | wc -l)
+          if [ "$distinct" -lt 2 ]; then
+            echo "expected at least 2 DISTINCT timestamps (proving it ticks, not just prints once), got $distinct"
+            exit 1
+          fi
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker logs clock-e2e || true
+
+      - name: Clean up
+        if: always()
+        run: docker stop clock-e2e 2>/dev/null || true

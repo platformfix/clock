@@ -1,0 +1,10 @@
+version: 2
+
+builds:
+  - id: clock
+    main: ./cmd/clock
+    binary: clock
+    goos:
+      - linux
+    goarch:
+      - amd64
