@@ -15,7 +15,20 @@ jobs:
   commit-lint:
     name: commit-lint
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
+    # Dependabot's own commit messages don't pass commitlint's stricter
+    # subject-case/body-line-length rules (its PR titles do - pr-lint still
+    # runs for these). A job skipped by its own "if" reports as passing for
+    # required-status-check purposes, so this exempts Dependabot without
+    # weakening the check for anyone else.
+    #
+    # Keyed on the PR's author (github.event.pull_request.user.login), not
+    # github.actor: actor is whoever triggered this specific event, so any
+    # later human push to a Dependabot branch (a merge, a rebase, clicking
+    # "Update branch") flips actor away from dependabot[bot] and makes this
+    # job actually run commitlint against Dependabot's own capitalized
+    # "Bump X from A to B" subject - failing a PR the exemption was meant
+    # to cover. The PR author never changes after the branch is opened.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
